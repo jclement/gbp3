@@ -3,40 +3,46 @@ var debug = require("debug")("main");
 var debugMessage = require("debug")("message");
 
 var currentState = 'C'; // C=Closed, O=Open, M=Moving
+var doorTravelTime = 5000;
 
 var client = mqtt.connect('mqtt://iot.adipose', {
     clientId: 'garage-controller',
 });
 
+// push current state to MQTT
 var publishState = function() {
   client.publish('garage/state', currentState, {retain: true});
 };
 
+// open the door
 var open = function() {
-  debugMessage("Opening");
+  if (currentState !== 'C') return;
+  debug("Opening");
   currentState = 'U';
   publishState();
   setTimeout(function() {
-    debugMessage("Opened");
+    debug("Opened");
     currentState = 'O';
     publishState();
-  }, 5000);
+  }, doorTravelTime);
 };
 
+// close the door
 var close = function() {
-  debugMessage("Closing");
+  if (currentState !== 'O') return;
+  debug("Closing");
   currentState = 'D';
   publishState();
   setTimeout(function() {
-    debugMessage("Closed");
+    debug("Closed");
     currentState = 'C';
     publishState();
-  }, 5000);
+  }, doorTravelTime);
 };
 
 client.on('connect', function() {
   client.subscribe('garage/control');
-  client.publish('garage/state', currentState, {retain: true});
+  publishState();
 });
 
 client.on('message', function(topic, message) {
@@ -51,4 +57,3 @@ client.on('message', function(topic, message) {
     }
   }
 });
-
