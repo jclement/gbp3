@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/jclement/gbp3#readme",
   "dependencies": {
+    "debug": "^2.2.0",
     "mqtt": "^1.10.0"
   }
 }
