@@ -1,0 +1,22 @@
+{
+  "mqtt": {
+    "password": "",
+    "username": "garage",
+    "clientid": "garage-notifier",
+    "url": "mqtt://iot.adipose",
+    "topics": {
+      "state": "garage/state",
+      "presence": "garage/presence"
+    }
+  },
+  "twilio": {
+    "enable": true,
+    "from": "",
+    "sid": "",
+    "token": "",
+    "numbers": [
+      ""
+    ],
+    "triggers": [5,10,15,30,60]
+  }
+}
