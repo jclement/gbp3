@@ -1,10 +1,19 @@
 // HomeKit types required
+var nconf = require("nconf");
+nconf.argv().env().file({file: __filename + "on"}); // cheat and look for JSON with same name
+
 var types = require("./types.js");
 var exports = module.exports = {};
 var mqtt = require('mqtt');
-var client = mqtt.connect('mqtt://iot.adipose', {
-    clientId: 'siri-garage',
-    clean: true
+var client = mqtt.connect(nconf.get("mqtt:url"), {
+  clientId: nconf.get("mqtt:clientid"),
+  clean: true,
+  username: nconf.get("mqtt:username"),
+  password: nconf.get("mqtt:password"),
+  will: {
+    topic: nconf.get('mqtt:topics:presence'),
+    payload: 'SIRI-OFFLINE'
+  }
 });
 
 var state = undefined;
@@ -23,25 +32,21 @@ var targetStateMap = {
 };
 
 client.on('connect', function() {
-  client.subscribe('garage/state');
-  client.publish('garage/presence', 'ONLINE');
+  client.subscribe(nconf.get('mqtt:topics:state'));
+  client.publish(nconf.get('mqtt:topics:presence'), 'SIRI-ONLINE');
 });
 
 client.on('message', function(topic, message) {
-  if (topic === 'garage/state') {
+  if (topic === nconf.get('mqtt:topics:state')) {
     state = message.toString();
-    console.log("new state: ", state);
+    console.log("New State Received: ", state);
   }
 });
 
-var execute = function(accessory,characteristic,value) {
-  console.log("executed accessory: " + accessory + ", and characteristic: " + characteristic + ", with value: " +  value + "."); 
-};
-
 exports.accessory = {
-  displayName: "Garage Door Opener",
-  username: "3C:5A:01:EE:5E:FA",
-  pincode: "061-22-123",
+  displayName: nconf.get('homekit:name'),
+  username: nconf.get('homekit:username'),
+  pincode: nconf.get('homekit:pincode'),
   services: [{
     sType: types.ACCESSORY_INFORMATION_STYPE, 
     characteristics: [{
@@ -49,7 +54,7 @@ exports.accessory = {
       onUpdate: null,
       perms: ["pr"],
       format: "string",
-      initialValue: "Garage Door Opener",
+      initialValue: nconf.get('homekit:name'),
       supportEvents: false,
       supportBonjour: false,
       manfDescription: "Name of the accessory",
@@ -102,7 +107,7 @@ exports.accessory = {
       onUpdate: null,
       perms: ["pr"],
       format: "string",
-      initialValue: "Garage Door Opener Control",
+      initialValue: nconf.get('homekit:name') + " Control",
       supportEvents: false,
       supportBonjour: false,
       manfDescription: "Name of service",
@@ -110,12 +115,8 @@ exports.accessory = {
     },{
       cType: types.CURRENT_DOOR_STATE_CTYPE,
       onUpdate: function(value) { 
-        console.log("Change:",value); 
-        execute("Garage Door - current door state", "Current State", value); 
       },
       onRead: function(callback) {
-        console.log("Read:");
-        execute("Garage Door - current door state", "Current State", state);
         callback(currentStateMap[state]); 
       },
       perms: ["pr","ev"],
@@ -133,18 +134,15 @@ exports.accessory = {
       onUpdate: function(value) { 
         console.log("Change:",value); 
         if (value === 0) {
-          client.publish('garage/control', 'O');
-          execute("Garage Door - current door state", "Current State", value); 
+          client.publish(nconf.get('mqtt:topics:control'), 'O');
+          console.log("Sending open command");
         }
         if (value === 1) {
-          client.publish('garage/control', 'C');
-          execute("Garage Door - current door state", "Current State", value); 
+          client.publish(nconf.get('mqtt:topics:control'), 'C');
+          console.log("Sending close command");
         }
-        execute("Garage Door - target door state", "Current State", value); 
       },
       onRead: function(callback) {
-        console.log("Read:");
-        execute("Garage Door - target door state", "Current State", state);
         callback(targetStateMap[state]); 
       },
       perms: ["pr","pw","ev"],
@@ -160,12 +158,8 @@ exports.accessory = {
     },{
       cType: types.OBSTRUCTION_DETECTED_CTYPE,
       onUpdate: function(value) { 
-        console.log("Change:",value); 
-        execute("Garage Door - obstruction detected", "Current State", value); 
       },
       onRead: function(callback) {
-        console.log("Read:");
-        execute("Garage Door - obstruction detected", "Current State", null);
         callback(undefined); // only testing, we have no physical device to read from
       },
       perms: ["pr","ev"],

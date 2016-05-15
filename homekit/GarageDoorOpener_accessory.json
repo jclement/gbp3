@@ -1,0 +1,18 @@
+{
+  "mqtt": {
+    "url": "mqtt://iot.adipose",
+    "username": "siri",
+    "password": "????",
+    "clientid": "siri-garage",
+    "topics": {
+      "presence": "garage/presence",
+      "control": "garage/control",
+      "state": "garage/state"
+    }
+  },
+  "homekit": {
+    "username": "01:01:01:01:01:01",
+    "pincode": "000-00-000",
+    "name": "Garage Door Opener"
+  }
+}
