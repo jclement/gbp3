@@ -1,7 +1,7 @@
 {
   "mqtt": {
     "password": "????",
-    "user": "garage",
+    "username": "garage",
     "clientid": "garage-controller",
     "url": "mqtt://iot.adipose",
     "topics": {
@@ -15,4 +15,4 @@
     "control": 25
   },
   "traveltime": 12
-  }
+}
