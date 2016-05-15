@@ -3,25 +3,29 @@ var debug = require("debug")("main");
 var debugMessage = require("debug")("message");
 var debugPoll = require("debug")("poll");
 var Gpio = require('onoff').Gpio;
+var path = require('path');
+
+var nconf = require('nconf');
+nconf.argv().env().file({file: path.join(__dirname, 'config.json')});
 
 // PIN for reading state of door (true: open, false: closed)
-var gpioStatus = new Gpio(4, 'in', 'both');
+PIN_STATUS = nconf.get('pins:status');
+var gpioStatus = new Gpio(PIN_STATUS, 'in', 'both');
 
 // PIN for toggling opener.  
-var gpioDoor = new Gpio(25, 'out');
+PIN_CONTROL = nconf.get('pins:control');
+var gpioControl = new Gpio(PIN_CONTROL, 'out');
 
-// time for door to travel up or down
-var doorTravelTime = 12 * 1000; 
+// time for door to travel up or down.  Don't read state
+// during travel because it's misleading.
+var doorTravelTime = nconf.get('traveltime') * 1000; 
 
 // is door travelling?  If so, we skip periodic state reads
 var working = false;
 
 var readStateSync = function() {
-  debug("Raw Value - %s", gpioStatus.readSync());
   return gpioStatus.readSync() ? "O": "C";
 };
-
-debug("Starting State - %s", readStateSync());
 
 var readStateAsync = function(callback) {
   gpioStatus.read(function(err, value) {
@@ -30,14 +34,14 @@ var readStateAsync = function(callback) {
 };
 
 // starting state...
-var currentState = readStateSync(); // C=Closed, O=Open, M=Moving
+var currentState = readStateSync(); // C=Closed, O=Open
 
 // periodically read current state so we catch manual door operations
 setInterval(function() {
   if (!working) {
     readStateAsync(function(state) {
-      debugPoll("Polled state = %s", state);
       if (state !== currentState) {
+        debugPoll("Polled state changed from %s to %s", currentState, state);
         currentState = state;
         publishState();
       }
@@ -47,21 +51,26 @@ setInterval(function() {
   }
 }, 1000);
 
-
-var client = mqtt.connect('mqtt://iot.adipose', {
-    clientId: 'garage-controller',
+var client = mqtt.connect(nconf.get("mqtt:url"), {
+  clientId: nconf.get('mqtt:clientid'),
+    username: nconf.get('mqtt:username'),
+    password: nconf.get('mqtt:password'),
+    will: {
+      topic: nconf.get("mqtt:topics:presence"),
+      payload: 'GBP-OFFLINE'
+    }
 });
 
 // push current state to MQTT
 var publishState = function() {
-  client.publish('garage/state', currentState, {retain: true});
+  client.publish(nconf.get("mqtt:topics:state"), currentState, {retain: true});
 };
 
 // toggle door opener (up or down)
 var toggleDoor = function() {
-  gpioDoor.writeSync(1);
+  gpioControl.writeSync(1);
   setTimeout(function() {
-    gpioDoor.writeSync(0);
+    gpioControl.writeSync(0);
   }, 250);
 };
 
@@ -92,12 +101,13 @@ var close = function() {
 };
 
 client.on('connect', function() {
-  client.subscribe('garage/control');
+  client.subscribe(nconf.get("mqtt:topics:control"));
+  client.publish(nconf.get("mqtt:topics:presence"), 'GBP-ONLINE');
   publishState();
 });
 
 client.on('message', function(topic, message) {
-  if (topic === 'garage/control') {
+  if (topic === nconf.get("mqtt:topics:control")) {
     var targetState = message.toString();
     debugMessage("Message Received [%s]", targetState);
     if (currentState === 'O' && targetState === 'C') {

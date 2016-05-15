@@ -1,0 +1,18 @@
+{
+  "mqtt": {
+    "password": "????",
+    "user": "garage",
+    "clientid": "garage-controller",
+    "url": "mqtt://iot.adipose",
+    "topics": {
+      "presence": "garage/presence",
+      "control": "garage/control",
+      "state": "garage/state"
+    }
+  },
+  "pins": {
+    "status": 4,
+    "control": 25
+  },
+  "traveltime": 12
+  }
