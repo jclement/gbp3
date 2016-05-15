@@ -10,11 +10,11 @@ nconf.argv().env().file({file: path.join(__dirname, 'config.json')});
 
 // PIN for reading state of door (true: open, false: closed)
 PIN_STATUS = nconf.get('pins:status');
-var gpioStatus = new Gpio(PIN_STATUS, 'in', 'both');
+var gpioStatus = new Gpio(nconf.get('pins:status'), 'in', 'both');
 
 // PIN for toggling opener.  
 PIN_CONTROL = nconf.get('pins:control');
-var gpioControl = new Gpio(PIN_CONTROL, 'out');
+var gpioControl = new Gpio(nconf.get('pins:control'), 'out');
 
 // time for door to travel up or down.  Don't read state
 // during travel because it's misleading.
@@ -53,12 +53,12 @@ setInterval(function() {
 
 var client = mqtt.connect(nconf.get("mqtt:url"), {
   clientId: nconf.get('mqtt:clientid'),
-    username: nconf.get('mqtt:username'),
-    password: nconf.get('mqtt:password'),
-    will: {
-      topic: nconf.get("mqtt:topics:presence"),
-      payload: 'GBP-OFFLINE'
-    }
+  username: nconf.get('mqtt:username'),
+  password: nconf.get('mqtt:password'),
+  will: {
+    topic: nconf.get("mqtt:topics:presence"),
+    payload: 'GBP-OFFLINE'
+  }
 });
 
 // push current state to MQTT
@@ -101,6 +101,7 @@ var close = function() {
 };
 
 client.on('connect', function() {
+  debugMessage("Connected to %s", nconf.get("mqtt:url"));
   client.subscribe(nconf.get("mqtt:topics:control"));
   client.publish(nconf.get("mqtt:topics:presence"), 'GBP-ONLINE');
   publishState();
