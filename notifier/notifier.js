@@ -1,4 +1,3 @@
-var twilio = require("twilio");
 var debugMessage = require("debug")("sendMessage");
 var debugTrigger = require("debug")("trigger");
 var path = require("path");
